@@ -1,108 +1,298 @@
 <?php
 
 require_once "./src/combatentes.php";
-/**
- * @property array $ataques
- */
+
 class Arbitro
 {
-  public $classeJogador1;
-  public $classeJogador2;
-  public array  $EspecialDisponivelCombatente1 = [false, false, false];
-  public array  $EspecialDisponivelCombatente2 = [false, false, false];
-  public array  $ataquesEspeciasJogador1;
-  public array  $ataquesEspeciasJogador2;
+  const PERSONAGENS = Combatentes::PERSONAGENS;
+
+  const POCAO_NIVEL_1 = 1;
+  const POCAO_NIVEL_2 = 2;
+  const POCAO_NIVEL_3 = 3;
+
+  const RODADA_LIBERA_ESPECIAL_1  = 2;
+  const RODADA_LIBERA_ESPECIAL_2  = 3;
+  const RODADA_LIBERA_POCAO_1     = 2;
+  const RODADA_LIBERA_POCAO_2     = 4;
+  const RODADA_LIBERA_POCAO_3     = 6;
+  const MAX_RODADAS_ESPECIAL      = 4;
+  const MAX_RODADAS_POCAO         = 7;
+
+  public $jogador1;
+  public $jogador2;
+  public string|null $nomeCombatente1 = null;
+  public string|null $nomeCombatente2 = null;
 
   public int $jogadorDaVez = 1;
-  const PERSONAGENS        = Combatentes::PERSONAGENS;
-  
-  public string|null $combatente1 = null;
-  public string|null $combatente2 = null;
+  private int $contadorRodadas = 0;
 
-  public function __construct($classeJogador1, $classeJogador2) {
-    $this->classeJogador1  =  $classeJogador1;
-    $this->classeJogador2  =  $classeJogador2;
-    $this->ataquesEspeciasJogador1 = array_keys($this->classeJogador1::ATAQUES_ESPECIAIS);
-    $this->ataquesEspeciasJogador2 = array_keys($this->classeJogador2::ATAQUES_ESPECIAIS);
+  public array $especiaisDisponiveisJogador1 = [false, false, false];
+  public array $especiaisDisponiveisJogador2 = [false, false, false];
 
-  }
+  public array $pocoesDisponiveisJogador1 = [self::POCAO_NIVEL_1, self::POCAO_NIVEL_2, self::POCAO_NIVEL_3];
+  public array $pocoesDisponiveisJogador2 = [self::POCAO_NIVEL_1, self::POCAO_NIVEL_2, self::POCAO_NIVEL_3];
 
-  private function exibirCombatentes(): void
+  private bool $especialUnicoJogador1Disponivel = true;
+  private bool $especialUnicoJogador2Disponivel = true;
+
+  public function __construct($jogador1, $jogador2)
   {
-    foreach (self::PERSONAGENS as $indice => $combatente) {
-      $indice++;
-      echo "$indice: $combatente\n";
-    }
+    $this->jogador1 = $jogador1;
+    $this->jogador2 = $jogador2;
   }
+
+  // ─── Seleção de combatentes ───────────────────────────────────────────────
 
   public function escolherCombatentes(): void
   {
     echo "Escolha os combatentes:\n";
-    $this->exibirCombatentes();
-    echo "\n[JOGADOR1]\n";
-    $escolha1 = (int)readline("Primeiro combatente: ");
+    $this->exibirListaDePersonagens();
 
-    if (!is_numeric($escolha1) || !isset(self::PERSONAGENS[$escolha1 - 1]))
-      throw new \Exception("[Arbitro] ERRO: Primeiro combatente invalido.");
-    
-    echo "\n[JOGADOR2]\n";
-    $escolha2 = (int)readline("Segundo combatente: ");
-    if (!is_numeric($escolha2) || !isset(self::PERSONAGENS[$escolha2 - 1]))
-      throw new \Exception("[Arbitro] ERRO: Segundo combatente invalido.");
+    echo "\n[JOGADOR 1]\n";
+    $this->nomeCombatente1 = $this->selecionarPersonagem("Primeiro combatente: ");
 
-    $this->combatente1 = self::PERSONAGENS[$escolha1 - 1];
-    $this->combatente2 = self::PERSONAGENS[$escolha2 - 1];
+    echo "\n[JOGADOR 2]\n";
+    $this->nomeCombatente2 = $this->selecionarPersonagem("Segundo combatente: ");
+  }
+
+  private function exibirListaDePersonagens(): void
+  {
+    foreach (self::PERSONAGENS as $indice => $nome)
+      echo ($indice + 1) . ": $nome\n";
+  }
+
+  private function selecionarPersonagem(string $mensagem): string
+  {
+    $escolha = (int) readline($mensagem);
+
+    if (!isset(self::PERSONAGENS[$escolha - 1]))
+      throw new \Exception("[Arbitro] Personagem inválido: $escolha");
+
+    return self::PERSONAGENS[$escolha - 1];
+  }
+
+  // ─── Controle de turno ───────────────────────────────────────────────────
+
+  public function avancarTurno(): void
+  {
+    $this->jogadorDaVez = $this->jogadorDaVez === 1 ? 2 : 1;
+    $this->contadorRodadas++;
+    $this->liberarEspeciais();
+    $this->liberarPocoes();
+  }
+
+  public function exibirEstadoDaBatalha(): void
+  {
+    echo "\n───────────────────────────────────────────────────\n";
+    echo "Rodada {$this->contadorRodadas} | Vez do Jogador {$this->jogadorDaVez}\n";
+    echo "Jogador 1 [{$this->nomeCombatente1}] HP: {$this->jogador1->vida}\n";
+    echo "Jogador 2 [{$this->nomeCombatente2}] HP: {$this->jogador2->vida}\n";
+    echo "\n───────────────────────────────────────────────────\n";
+  }
+
+  public function batalhaEncerrada(): bool
+  {
+    return $this->jogador1->vida <= 0 || $this->jogador2->vida <= 0;
+  }
+
+  public function exibirVencedor(): void
+  {
+    if ($this->jogador1->vida <= 0 && $this->jogador2->vida <= 0) {
+      echo "Empate! Ambos os combatentes caíram.\n";
+      return;
+    }
+
+    $vencedor = $this->jogador1->vida > 0 ? $this->nomeCombatente1 : $this->nomeCombatente2;
+    echo "Vencedor: $vencedor!\n";
+  }
+
+  // ─── Ações do turno ──────────────────────────────────────────────────────
+
+  public function executarAcaoDoTurno(): void
+  {
+    echo "\nO que deseja fazer?\n";
+    echo "1: Atacar\n";
+    echo "2: Usar poção\n";
+    echo "3: Defender (pular turno com redução de dano)\n";
+
+    $acao = (int) readline("Escolha uma ação: ");
+
+    match ($acao) {
+      1 => $this->atacar(),
+      2 => $this->curar(),
+      3 => $this->defender(),
+      default => throw new \Exception("[Arbitro] Ação inválida: $acao")
+    };
   }
 
   public function atacar(): void
   {
-    $poderesEspecias = match($this->jogadorDaVez) {
-      1       => $this->EspecialDisponivelCombatente1,
-      2       => $this->EspecialDisponivelCombatente2,
-      default => []
+    [$atacante, $defensor] = $this->resolverAtacanteEDefensor();
+    [$especiaisDisponiveis, $nomesEspeciais] = $this->resolverEspeciaisDoAtacante();
+
+    $this->exibirOpcoesDeAtaque($atacante, $especiaisDisponiveis, $nomesEspeciais);
+
+    $escolha = (int) readline("Escolha um ataque: ");
+    $ataquesBasicos = array_keys($atacante->ataquesBasicos);
+    $totalBasicos   = count($ataquesBasicos);
+
+    if ($escolha < $totalBasicos) {
+      $nomeAtaque = $ataquesBasicos[$escolha];
+      $defensor->receberDano($atacante->ataqueTotal[$nomeAtaque]);
+      return;
+    }
+
+    $indiceEspecial = $escolha - $totalBasicos;
+
+    if (!isset($nomesEspeciais[$indiceEspecial]) || !$especiaisDisponiveis[$indiceEspecial])
+      throw new \Exception("[Arbitro] Ataque especial inválido ou indisponível.");
+
+    $nomeAtaque = $nomesEspeciais[$indiceEspecial];
+    $defensor->receberDano($atacante->ataqueTotal[$nomeAtaque]);
+    $this->consumirEspecial($indiceEspecial);
+  }
+
+  private function exibirOpcoesDeAtaque($atacante, array $especiaisDisponiveis, array $nomesEspeciais): void
+  {
+    echo "\nATAQUES BÁSICOS\n";
+    foreach (array_keys($atacante->ataquesBasicos) as $i => $nome)
+      echo "$i: $nome\n";
+
+    $totalBasicos = count($atacante->ataquesBasicos);
+    foreach ($nomesEspeciais as $i => $nome) {
+      if (!$especiaisDisponiveis[$i]) continue;
+      $exibicao = $i + $totalBasicos;
+      echo "$exibicao: [ESPECIAL] $nome\n";
+    }
+  }
+
+  public function defender(): void
+  {
+    $jogador = $this->jogadorDaVez === 1 ? $this->jogador1 : $this->jogador2;
+    $jogador->ativarDefesa();
+    echo "Jogador {$this->jogadorDaVez} está em postura defensiva!\n";
+  }
+
+  public function curar(): void
+  {
+    [$jogador, $pocoesDisponiveis] = $this->resolverJogadorEPocoesDoTurno();
+    $pocoesFiltradas = array_filter($pocoesDisponiveis);
+
+    if (empty($pocoesFiltradas)) {
+      echo "Nenhuma poção disponível.\n";
+      return;
+    }
+
+    $this->exibirPocoesDisponiveis($pocoesFiltradas);
+
+    $nivelEscolhido = (int) readline("Digite o nível da poção: ");
+
+    if (!in_array($nivelEscolhido, $pocoesFiltradas))
+      throw new \Exception("[Arbitro] Poção inválida ou indisponível: $nivelEscolhido");
+
+    $indice = $nivelEscolhido - 1;
+    $jogador->usarPocao($indice);
+    $this->consumirPocao($indice);
+  }
+
+  private function exibirPocoesDisponiveis(array $pocoesFiltradas): void
+  {
+    echo "\nPOÇÕES DISPONÍVEIS\n";
+    foreach ($pocoesFiltradas as $nivel)
+      echo "$nivel: Poção nível $nivel\n";
+  }
+
+  // ─── Liberação de recursos por rodada ────────────────────────────────────
+
+  public function liberarEspeciais(): void
+  {
+    $rodada = $this->contadorRodadas % self::MAX_RODADAS_ESPECIAL;
+
+    match ($rodada) {
+      self::RODADA_LIBERA_ESPECIAL_1 => $this->liberarEspecialNoIndice(0),
+      self::RODADA_LIBERA_ESPECIAL_2 => $this->liberarEspecialNoIndice(1),
+      default                        => null
     };
 
-    $ataquesBasicos = array_keys($this->classeJogador1->ataquesBasicos);
-    echo "\nATAQUES DIRETOS\n";
+    $this->verificarELibertarEspecialDeDesespero();
+  }
 
-    foreach($ataquesBasicos as $index =>$ataque) echo "$index: $ataque\n";
-    foreach (array_filter($poderesEspecias) as $index => $poderEspecial) {
-      $index += 2;
-      echo "PODER ESPECIAL DISPONIVEL!\n";
-      echo "$index: $poderEspecial\n";
+  private function liberarEspecialNoIndice(int $indice): void
+  {
+    $this->especiaisDisponiveisJogador1[$indice] = true;
+    $this->especiaisDisponiveisJogador2[$indice] = true;
+  }
+
+  private function verificarELibertarEspecialDeDesespero(): void
+  {
+    if ($this->especialUnicoJogador1Disponivel && $this->jogador1->vida <= 100) {
+      $this->especiaisDisponiveisJogador1[2]      = true;
+      $this->especialUnicoJogador1Disponivel       = false;
     }
 
-    $ataqueEscolhido = (int)readline("escolha um ataque: ");
-    if (!is_numeric($ataqueEscolhido) && $ataqueEscolhido > 5) 
-      throw new \Exception("[Arbitro][atacar] ERRO: input de \"ataqueEscolhido\" invalido");
-
-    if ($ataqueEscolhido <3) {
-      $nomeDoAtaque = $ataquesBasicos[$ataqueEscolhido];
-      match ($this->jogadorDaVez) {
-        1       => $this->classeJogador1->causarDano($this->classeJogador2->ataquesBasicos[$nomeDoAtaque]),
-        2       => $this->classeJogador2->causarDano($this->classeJogador1->ataquesBasicos[$nomeDoAtaque]),
-        default => throw new \Exception("ERRO: DESCONHECIDO")
-      };
-    } else {
-      $nomeDoAtaque = $poderesEspecias[$ataqueEscolhido];
-      match ($this->jogadorDaVez) {
-        1       => $this->classeJogador1->causarDano($this->classeJogador1->ataqueTota2[$nomeDoAtaque]),
-        2       => $this->classeJogador1->causarDano($this->classeJogador1->ataqueTotal[$nomeDoAtaque]),
-        default => throw new \Exception("ERRO: DESCONHECIDO")
-      };
-
+    if ($this->especialUnicoJogador2Disponivel && $this->jogador2->vida <= 100) {
+      $this->especiaisDisponiveisJogador2[2]      = true;
+      $this->especialUnicoJogador2Disponivel       = false;
     }
+  }
 
-    if ($this->jogadorDaVez === 1){
-      $this->jogadorDaVez ++;
-    }  
-    $this->jogadorDaVez   --;
+  public function liberarPocoes(): void
+  {
+    $rodada = $this->contadorRodadas % self::MAX_RODADAS_POCAO;
+
+    match ($rodada) {
+      self::RODADA_LIBERA_POCAO_1 => $this->reporPocao(0, self::POCAO_NIVEL_1),
+      self::RODADA_LIBERA_POCAO_2 => $this->reporPocao(1, self::POCAO_NIVEL_2),
+      self::RODADA_LIBERA_POCAO_3 => $this->reporPocao(2, self::POCAO_NIVEL_3),
+      default                     => null
+    };
+  }
+
+  private function reporPocao(int $indice, int $nivel): void
+  {
+    if ($this->pocoesDisponiveisJogador1[$indice] === 0)
+      $this->pocoesDisponiveisJogador1[$indice] = $nivel;
+
+    if ($this->pocoesDisponiveisJogador2[$indice] === 0)
+      $this->pocoesDisponiveisJogador2[$indice] = $nivel;
+  }
+
+  // ─── Helpers de resolução por turno ──────────────────────────────────────
+
+  private function resolverAtacanteEDefensor(): array
+  {
+    return $this->jogadorDaVez === 1
+      ? [$this->jogador1, $this->jogador2]
+      : [$this->jogador2, $this->jogador1];
+  }
+
+  private function resolverEspeciaisDoAtacante(): array
+  {
+    return $this->jogadorDaVez === 1
+      ? [$this->especiaisDisponiveisJogador1, array_keys($this->jogador1::ATAQUES_ESPECIAIS)]
+      : [$this->especiaisDisponiveisJogador2, array_keys($this->jogador2::ATAQUES_ESPECIAIS)];
+  }
+
+  private function resolverJogadorEPocoesDoTurno(): array
+  {
+    return $this->jogadorDaVez === 1
+      ? [$this->jogador1, $this->pocoesDisponiveisJogador1]
+      : [$this->jogador2, $this->pocoesDisponiveisJogador2];
+  }
+
+  private function consumirEspecial(int $indice): void
+  {
+    if ($this->jogadorDaVez === 1)
+      $this->especiaisDisponiveisJogador1[$indice] = false;
+    else
+      $this->especiaisDisponiveisJogador2[$indice] = false;
+  }
+
+  private function consumirPocao(int $indice): void
+  {
+    if ($this->jogadorDaVez === 1)
+      $this->pocoesDisponiveisJogador1[$indice] = 0;
+    else
+      $this->pocoesDisponiveisJogador2[$indice] = 0;
   }
 }
-
-// $c = new Cavaleiro();
-// $b = new Bruxa();
-// $a = new Arbitro($c, $b);
-// $a->atacar();
-
-// print_r($c->vida);
