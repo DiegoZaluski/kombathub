@@ -17,4 +17,8 @@ trait Acao
     if (isset($this->vida))
       $this->vida -= $dano;
   }
+
+  public function ativarDefesa():void {
+    $this->vida +=2;
+  }
 }

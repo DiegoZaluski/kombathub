@@ -1,7 +1,9 @@
 <?php
-
+require_once("./src/util/tentativaEErro.php");
 class Arbitro
 {
+
+  use TentativaEErro;
   const POCAO_NIVEL_1 = 1;
   const POCAO_NIVEL_2 = 2;
   const POCAO_NIVEL_3 = 3;
@@ -13,6 +15,8 @@ class Arbitro
   const RODADA_LIBERA_POCAO_3     = 6;
   const MAX_RODADAS_ESPECIAL      = 4;
   const MAX_RODADAS_POCAO         = 7;
+
+  public $golpesSimplesDisponiveis = ["chute"=> true, "distancia"=> true];
 
   public $jogador1;
   public $jogador2;
@@ -46,7 +50,7 @@ class Arbitro
     $this->jogadorDaVez = $this->jogadorDaVez === 1 ? 2 : 1;
     $this->contadorRodadas++;
     $this->liberarEspeciaisPorRodada();
-    $this->liberarPocoes();
+    // $this->liberarPocoes();
   }
 
   public function exibirEstadoDaBatalha(): void
@@ -85,17 +89,24 @@ class Arbitro
     echo "1: Atacar\n";
     echo "2: Usar poção\n";
     echo "3: Defender (pular turno com redução de dano)\n";
+    $textErro = "ERRO: OPÇÃO DE ATAQUE INVALIDA.";
+    $mensagem = "Escolha uma ação: ";
 
-    $acao = (int) readline("Escolha uma ação: ");
-
+    (int)$acao = (int)$this->tentativaEErro(
+        readline(...),
+        $mensagem,
+        $textErro);
+    // $acao = (int)readline($mensagem );
+      
+    // echo "AÇÃO LOG: $acao". is_numeric($acao);
     match ($acao) {
-      1 => $this->atacar(),
-      2 => $this->curar(),
-      3 => $this->defender(),
+      1       => $this->atacar(),
+      2       => $this->curar(),
+      3       => $this->defender(),
       default => throw new \Exception("[Arbitro] Ação inválida: $acao")
     };
 
-    echo "\033[6;1H"; //MOVE
+    echo "\033[6;1H"; // MOVE
     echo "\033[J"; // LIMPA
   }
 
@@ -106,7 +117,15 @@ class Arbitro
 
     $this->exibirOpcoesDeAtaque($atacante, $especiaisDisponiveis, $nomesEspeciais);
 
-    $escolha = (int) readline("Escolha um ataque: ");
+    // $escolha = (int) readline("Escolha um ataque: ") -1;
+    $mensagem = "Escolha um ataque: ";
+    $textpErro = "ERRO: OPÇÃO DE ATAQUE INVALIDO." ;
+
+    $escolha = (int)$this->tentativaEErro(
+      readline(...),
+      $mensagem,
+      $textpErro) -1;
+    
     $ataquesBasicos = array_keys($atacante->ataquesBasicos);
     $totalBasicos   = count($ataquesBasicos);
 
@@ -129,14 +148,20 @@ class Arbitro
   private function exibirOpcoesDeAtaque($atacante, array $especiaisDisponiveis, array $nomesEspeciais): void
   {
     echo "\nATAQUES BÁSICOS\n";
-    foreach (array_keys($atacante->ataquesBasicos) as $i => $nome)
-      echo "$i: $nome\n";
+    foreach (array_keys($atacante->ataquesBasicos) as $i => $nome){
+      // $this->golpesSimplesDisponiveis[$nome];
+
+      $danoDoGolpe = $atacante->ataquesBasicos[$nome];
+      $i++;
+      echo "$i: $nome [DANO: $danoDoGolpe]\n";
+    }
 
     $totalBasicos = count($atacante->ataquesBasicos);
     foreach ($nomesEspeciais as $i => $nome) {
       if (!$especiaisDisponiveis[$i]) continue;
-      $exibicao = $i + $totalBasicos;
-      echo "$exibicao: [ESPECIAL] $nome\n";
+      $danoDoGolpe = $atacante->ataquesTotal[$nome];
+      $exibicao    = $i + $totalBasicos;
+      echo "$exibicao: [ESPECIAL] $nome [DANO: $danoDoGolpe]\n";
     }
   }
 
@@ -159,14 +184,14 @@ class Arbitro
 
     $this->exibirPocoesDisponiveis($pocoesFiltradas);
 
-    $nivelEscolhido = (int) readline("Digite o nível da poção: ");
+    $nivelEscolhido = (int)readline("Digite o nível da poção: ");
 
     if (!in_array($nivelEscolhido, $pocoesFiltradas))
       throw new \Exception("[Arbitro] Poção inválida ou indisponível: $nivelEscolhido");
 
     $indice = $nivelEscolhido - 1;
     $jogador->usarPocao($indice);
-    $this->consumirPocao($indice);
+    $this   ->consumirPocao($indice);
   }
 
   private function exibirPocoesDisponiveis(array $pocoesFiltradas): void
@@ -210,17 +235,17 @@ class Arbitro
     }
   }
 
-  public function liberarPocoes(): void
-  {
-    $rodada = $this->contadorRodadas % self::MAX_RODADAS_POCAO;
+  // public function liberarPocoes(): void
+  // {
+  //   $rodada = $this->contadorRodadas % self::MAX_RODADAS_POCAO;
 
-    match ($rodada) {
-      self::RODADA_LIBERA_POCAO_1 => $this->reporPocao(0, self::POCAO_NIVEL_1),
-      self::RODADA_LIBERA_POCAO_2 => $this->reporPocao(1, self::POCAO_NIVEL_2),
-      self::RODADA_LIBERA_POCAO_3 => $this->reporPocao(2, self::POCAO_NIVEL_3),
-      default                     => null
-    };
-  }
+  //   // match ($rodada) {
+  //   //   self::RODADA_LIBERA_POCAO_1 => $this->reporPocao(0, self::POCAO_NIVEL_1),
+  //   //   self::RODADA_LIBERA_POCAO_2 => $this->reporPocao(1, self::POCAO_NIVEL_2),
+  //   //   self::RODADA_LIBERA_POCAO_3 => $this->reporPocao(2, self::POCAO_NIVEL_3),
+  //   //   default                     => null
+  //   // };
+  // }
 
   private function reporPocao(int $indice, int $nivel): void
   {
@@ -264,7 +289,7 @@ class Arbitro
 
   private function consumirPocao(int $indice): void
   {
-    if ($this->jogadorDaVez === 1)
+    if ($this->jogadorDaVez === 1) 
       $this->pocoesDisponiveisJogador1[$indice] = 0;
     else
       $this->pocoesDisponiveisJogador2[$indice] = 0;

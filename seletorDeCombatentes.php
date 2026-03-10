@@ -1,7 +1,8 @@
 <?php
-
+require_once("./src/util/tentativaEErro.php");
 class SeletorDeCombatentes
 {
+  use TentativaEErro;
   const PERSONAGENS = Combatentes::PERSONAGENS;
 
   public string $nomeCombatente1;
@@ -12,11 +13,21 @@ class SeletorDeCombatentes
     echo "Escolha os combatentes:\n";
     $this->exibirListaDePersonagens();
 
+    $textoErro = "\n[ERRO: OPÇÃO ESCOLHIDA PARA COMBATENTE É INVALIDA.]\n";
+    $mensagemCombatente1 = "Primeiro combatente: ";
+    $mensagemCombatente2 = "Segundo combatente: ";
+
     echo "\n[JOGADOR 1]\n";
-    $this->nomeCombatente1 = $this->selecionarPersonagem("Primeiro combatente: ");
+    $this->nomeCombatente1 = $this->tentativaEErro(
+      func: $this->selecionarPersonagem(...),
+      menssagemParaArgumento: $mensagemCombatente1,
+      textoErro: $textoErro);
 
     echo "\n[JOGADOR 2]\n";
-    $this->nomeCombatente2 = $this->selecionarPersonagem("Segundo combatente: ");
+    $this->nomeCombatente2 = $this->tentativaEErro(
+      func: $this->selecionarPersonagem(...),
+      menssagemParaArgumento: $mensagemCombatente2,
+      textoErro: $textoErro);
 
     return [
       $this->instanciarCombatente($this->nomeCombatente1),
