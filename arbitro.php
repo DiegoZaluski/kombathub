@@ -1,11 +1,7 @@
 <?php
 
-require_once "./src/combatentes.php";
-
 class Arbitro
 {
-  const PERSONAGENS = Combatentes::PERSONAGENS;
-
   const POCAO_NIVEL_1 = 1;
   const POCAO_NIVEL_2 = 2;
   const POCAO_NIVEL_3 = 3;
@@ -35,40 +31,12 @@ class Arbitro
   private bool $especialUnicoJogador1Disponivel = true;
   private bool $especialUnicoJogador2Disponivel = true;
 
-  public function __construct($jogador1, $jogador2)
+  public function __construct($jogador1, $jogador2, string $nomeCombatente1, string $nomeCombatente2)
   {
     $this->jogador1 = $jogador1;
     $this->jogador2 = $jogador2;
-  }
-
-  // ─── Seleção de combatentes ───────────────────────────────────────────────
-
-  public function escolherCombatentes(): void
-  {
-    echo "Escolha os combatentes:\n";
-    $this->exibirListaDePersonagens();
-
-    echo "\n[JOGADOR 1]\n";
-    $this->nomeCombatente1 = $this->selecionarPersonagem("Primeiro combatente: ");
-
-    echo "\n[JOGADOR 2]\n";
-    $this->nomeCombatente2 = $this->selecionarPersonagem("Segundo combatente: ");
-  }
-
-  private function exibirListaDePersonagens(): void
-  {
-    foreach (self::PERSONAGENS as $indice => $nome)
-      echo ($indice + 1) . ": $nome\n";
-  }
-
-  private function selecionarPersonagem(string $mensagem): string
-  {
-    $escolha = (int) readline($mensagem);
-
-    if (!isset(self::PERSONAGENS[$escolha - 1]))
-      throw new \Exception("[Arbitro] Personagem inválido: $escolha");
-
-    return self::PERSONAGENS[$escolha - 1];
+    $this->nomeCombatente1 = $nomeCombatente1;
+    $this->nomeCombatente2 = $nomeCombatente2;
   }
 
   // ─── Controle de turno ───────────────────────────────────────────────────
@@ -77,17 +45,20 @@ class Arbitro
   {
     $this->jogadorDaVez = $this->jogadorDaVez === 1 ? 2 : 1;
     $this->contadorRodadas++;
-    $this->liberarEspeciais();
+    $this->liberarEspeciaisPorRodada();
     $this->liberarPocoes();
   }
 
   public function exibirEstadoDaBatalha(): void
   {
-    echo "\n───────────────────────────────────────────────────\n";
-    echo "Rodada {$this->contadorRodadas} | Vez do Jogador {$this->jogadorDaVez}\n";
-    echo "Jogador 1 [{$this->nomeCombatente1}] HP: {$this->jogador1->vida}\n";
-    echo "Jogador 2 [{$this->nomeCombatente2}] HP: {$this->jogador2->vida}\n";
-    echo "\n───────────────────────────────────────────────────\n";
+    echo "\033[s";
+    echo "\033[H";
+    echo "\033[2K" . "───────────────────────────────────────────────────\n";
+    echo "\033[2K" . "Rodada {$this->contadorRodadas} | Vez do Jogador {$this->jogadorDaVez}\n";
+    echo "\033[2K" . "Jogador 1 [{$this->nomeCombatente1}] HP: {$this->jogador1->vida}\n";
+    echo "\033[2K" . "Jogador 2 [{$this->nomeCombatente2}] HP: {$this->jogador2->vida}\n";
+    echo "\033[2K" . "───────────────────────────────────────────────────\n";
+    echo "\033[u";
   }
 
   public function batalhaEncerrada(): bool
@@ -123,6 +94,9 @@ class Arbitro
       3 => $this->defender(),
       default => throw new \Exception("[Arbitro] Ação inválida: $acao")
     };
+
+    echo "\033[6;1H"; //MOVE
+    echo "\033[J"; // LIMPA
   }
 
   public function atacar(): void
@@ -138,7 +112,7 @@ class Arbitro
 
     if ($escolha < $totalBasicos) {
       $nomeAtaque = $ataquesBasicos[$escolha];
-      $defensor->receberDano($atacante->ataqueTotal[$nomeAtaque]);
+      $defensor->causarDano($atacante->ataquesTotal[$nomeAtaque]);
       return;
     }
 
@@ -148,7 +122,7 @@ class Arbitro
       throw new \Exception("[Arbitro] Ataque especial inválido ou indisponível.");
 
     $nomeAtaque = $nomesEspeciais[$indiceEspecial];
-    $defensor->receberDano($atacante->ataqueTotal[$nomeAtaque]);
+    $defensor->causarDano($atacante->ataquesTotal[$nomeAtaque]);
     $this->consumirEspecial($indiceEspecial);
   }
 
@@ -204,7 +178,7 @@ class Arbitro
 
   // ─── Liberação de recursos por rodada ────────────────────────────────────
 
-  public function liberarEspeciais(): void
+  public function liberarEspeciaisPorRodada(): void
   {
     $rodada = $this->contadorRodadas % self::MAX_RODADAS_ESPECIAL;
 
@@ -214,7 +188,7 @@ class Arbitro
       default                        => null
     };
 
-    $this->verificarELibertarEspecialDeDesespero();
+    $this->liberarEspecialDeDesespero();
   }
 
   private function liberarEspecialNoIndice(int $indice): void
@@ -223,16 +197,16 @@ class Arbitro
     $this->especiaisDisponiveisJogador2[$indice] = true;
   }
 
-  private function verificarELibertarEspecialDeDesespero(): void
+  private function liberarEspecialDeDesespero(): void
   {
     if ($this->especialUnicoJogador1Disponivel && $this->jogador1->vida <= 100) {
       $this->especiaisDisponiveisJogador1[2]      = true;
-      $this->especialUnicoJogador1Disponivel       = false;
+      $this->especialUnicoJogador1Disponivel      = false;
     }
 
     if ($this->especialUnicoJogador2Disponivel && $this->jogador2->vida <= 100) {
       $this->especiaisDisponiveisJogador2[2]      = true;
-      $this->especialUnicoJogador2Disponivel       = false;
+      $this->especialUnicoJogador2Disponivel      = false;
     }
   }
 

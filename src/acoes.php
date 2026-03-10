@@ -2,7 +2,8 @@
 /**
  * @property int $vida
  */
-trait Acao {
+trait Acao 
+{
   public function usarPocao(int $nivel): void {
     $curasPorNivel = [10, 30, 50];
     $nivelValido   = $nivel >= 0 && $nivel < count($curasPorNivel);

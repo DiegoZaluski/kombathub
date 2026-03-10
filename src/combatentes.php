@@ -1,7 +1,8 @@
 <?php
 require_once "./src/acoes.php";
 
-class Combatentes {
+class Combatentes 
+{
   use Acao;
 
   const PERSONAGENS = ["mago", "cavaleiro", "bruxa"];
@@ -15,19 +16,21 @@ class Combatentes {
   protected int   $vida           = 200;
   protected array $ataquesBasicos = [];
 
-  public function __construct() {
+  public function __construct() 
+  {
     $this->ataquesBasicos = self::ATAQUES_BASICOS;
   }
 
   public function __get(string $propriedade): mixed {
     return match ($propriedade) {
-      'vida'         => $this->vida,
+      'vida'           => $this->vida,
       'ataquesBasicos' => $this->ataquesBasicos,
-      default        => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
+      default          => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
     };
   }
 
-  public function __set(string $propriedade, int $valor): void {
+  public function __set(string $propriedade, int $valor): void 
+  {
     if (!is_numeric($valor))
       throw new InvalidArgumentException("Valor deve ser numerico.");
 
@@ -47,7 +50,9 @@ class Combatentes {
   }
 }
 
-class Mago extends Combatentes {
+class Mago extends Combatentes 
+{
+
   const ATAQUES_ESPECIAIS = [
     "explosao_de_luz" => 20,
     "raio"            => 30,
@@ -62,7 +67,9 @@ class Mago extends Combatentes {
   }
 }
 
-class Cavaleiro extends Combatentes {
+class Cavaleiro extends Combatentes 
+{
+
   const ATAQUES_ESPECIAIS = [
     "golpe_de_escudo" => 15,
     "corte"           => 20,
@@ -71,13 +78,16 @@ class Cavaleiro extends Combatentes {
 
   public array $ataquesTotal = [];
 
-  public function __construct() {
+  public function __construct() 
+  {
     parent::__construct();
     $this->ataquesTotal = array_merge($this->ataquesBasicos, self::ATAQUES_ESPECIAIS);
   }
 }
 
-class Bruxa extends Combatentes {
+class Bruxa extends Combatentes 
+{
+
   const ATAQUES_ESPECIAIS = [
     "explosao_negra"   => 20,
     "raio_amaldicoado" => 30,
@@ -88,7 +98,8 @@ class Bruxa extends Combatentes {
 
   public array $ataquesTotal = [];
 
-  public function __construct() {
+  public function __construct() 
+  {
     parent::__construct();
     $this->ataquesTotal = array_merge($this->ataquesBasicos, self::ATAQUES_ESPECIAIS);
     $this->vida        += self::BONUS_DE_VIDA;
