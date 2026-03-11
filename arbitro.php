@@ -1,9 +1,11 @@
 <?php
 require_once("./src/util/tentativaEErro.php");
 class Arbitro
+// reporPocao
 {
 
   use TentativaEErro;
+  const VOLORES_DE_CURA = [10, 30, 50];
   const POCAO_NIVEL_1 = 1;
   const POCAO_NIVEL_2 = 2;
   const POCAO_NIVEL_3 = 3;
@@ -92,7 +94,7 @@ class Arbitro
     $textErro = "ERRO: OPÇÃO DE ATAQUE INVALIDA.";
     $mensagem = "Escolha uma ação: ";
 
-    (int)$acao = (int)$this->tentativaEErro(
+    $acao = (int)$this->tentativaEErro(
         readline(...),
         $mensagem,
         $textErro);
@@ -103,7 +105,7 @@ class Arbitro
       1       => $this->atacar(),
       2       => $this->curar(),
       3       => $this->defender(),
-      default => throw new \Exception("[Arbitro] Ação inválida: $acao")
+      default => throw new \Exception("[Arbitro] Ação inválida: $acao")    
     };
 
     echo "\033[6;1H"; // MOVE
@@ -131,7 +133,9 @@ class Arbitro
 
     if ($escolha < $totalBasicos) {
       $nomeAtaque = $ataquesBasicos[$escolha];
-      $defensor->causarDano($atacante->ataquesTotal[$nomeAtaque]);
+      $argumentos = $atacante->ataquesTotal[$nomeAtaque];
+      $textoErro = "[atacar] ERRO: VALOR INVALIDO";
+      $this->tentativaEErro($defensor->causarDano(...), $argumentos, $textoErro); // AQUI
       return;
     }
 
@@ -159,48 +163,19 @@ class Arbitro
     $totalBasicos = count($atacante->ataquesBasicos);
     foreach ($nomesEspeciais as $i => $nome) {
       if (!$especiaisDisponiveis[$i]) continue;
+
       $danoDoGolpe = $atacante->ataquesTotal[$nome];
-      $exibicao    = $i + $totalBasicos;
+      $exibicao    = $i + $totalBasicos + 1;
       echo "$exibicao: [ESPECIAL] $nome [DANO: $danoDoGolpe]\n";
     }
   }
 
-  public function defender(): void
+  public function defender(): void // REVER ESSA LOGICA 
   {
     $jogador = $this->jogadorDaVez === 1 ? $this->jogador1 : $this->jogador2;
     $jogador->ativarDefesa();
     echo "Jogador {$this->jogadorDaVez} está em postura defensiva!\n";
   }
-
-  public function curar(): void
-  {
-    [$jogador, $pocoesDisponiveis] = $this->resolverJogadorEPocoesDoTurno();
-    $pocoesFiltradas = array_filter($pocoesDisponiveis);
-
-    if (empty($pocoesFiltradas)) {
-      echo "Nenhuma poção disponível.\n";
-      return;
-    }
-
-    $this->exibirPocoesDisponiveis($pocoesFiltradas);
-
-    $nivelEscolhido = (int)readline("Digite o nível da poção: ");
-
-    if (!in_array($nivelEscolhido, $pocoesFiltradas))
-      throw new \Exception("[Arbitro] Poção inválida ou indisponível: $nivelEscolhido");
-
-    $indice = $nivelEscolhido - 1;
-    $jogador->usarPocao($indice);
-    $this   ->consumirPocao($indice);
-  }
-
-  private function exibirPocoesDisponiveis(array $pocoesFiltradas): void
-  {
-    echo "\nPOÇÕES DISPONÍVEIS\n";
-    foreach ($pocoesFiltradas as $nivel)
-      echo "$nivel: Poção nível $nivel\n";
-  }
-
   // ─── Liberação de recursos por rodada ────────────────────────────────────
 
   public function liberarEspeciaisPorRodada(): void
@@ -213,7 +188,7 @@ class Arbitro
       default                        => null
     };
 
-    $this->liberarEspecialDeDesespero();
+    $this->liberarEspecialUnico();
   }
 
   private function liberarEspecialNoIndice(int $indice): void
@@ -222,7 +197,7 @@ class Arbitro
     $this->especiaisDisponiveisJogador2[$indice] = true;
   }
 
-  private function liberarEspecialDeDesespero(): void
+  private function liberarEspecialUnico(): void // RENOMEAR ISSO 
   {
     if ($this->especialUnicoJogador1Disponivel && $this->jogador1->vida <= 100) {
       $this->especiaisDisponiveisJogador1[2]      = true;
@@ -233,27 +208,6 @@ class Arbitro
       $this->especiaisDisponiveisJogador2[2]      = true;
       $this->especialUnicoJogador2Disponivel      = false;
     }
-  }
-
-  // public function liberarPocoes(): void
-  // {
-  //   $rodada = $this->contadorRodadas % self::MAX_RODADAS_POCAO;
-
-  //   // match ($rodada) {
-  //   //   self::RODADA_LIBERA_POCAO_1 => $this->reporPocao(0, self::POCAO_NIVEL_1),
-  //   //   self::RODADA_LIBERA_POCAO_2 => $this->reporPocao(1, self::POCAO_NIVEL_2),
-  //   //   self::RODADA_LIBERA_POCAO_3 => $this->reporPocao(2, self::POCAO_NIVEL_3),
-  //   //   default                     => null
-  //   // };
-  // }
-
-  private function reporPocao(int $indice, int $nivel): void
-  {
-    if ($this->pocoesDisponiveisJogador1[$indice] === 0)
-      $this->pocoesDisponiveisJogador1[$indice] = $nivel;
-
-    if ($this->pocoesDisponiveisJogador2[$indice] === 0)
-      $this->pocoesDisponiveisJogador2[$indice] = $nivel;
   }
 
   // ─── Helpers de resolução por turno ──────────────────────────────────────
@@ -272,13 +226,6 @@ class Arbitro
       : [$this->especiaisDisponiveisJogador2, array_keys($this->jogador2::ATAQUES_ESPECIAIS)];
   }
 
-  private function resolverJogadorEPocoesDoTurno(): array
-  {
-    return $this->jogadorDaVez === 1
-      ? [$this->jogador1, $this->pocoesDisponiveisJogador1]
-      : [$this->jogador2, $this->pocoesDisponiveisJogador2];
-  }
-
   private function consumirEspecial(int $indice): void
   {
     if ($this->jogadorDaVez === 1)
@@ -287,6 +234,56 @@ class Arbitro
       $this->especiaisDisponiveisJogador2[$indice] = false;
   }
 
+  private function resolverJogadorEPocoesDoTurno(): array
+  {
+    return $this->jogadorDaVez === 1
+      ? [$this->jogador1, $this->pocoesDisponiveisJogador1]
+      : [$this->jogador2, $this->pocoesDisponiveisJogador2];
+  }
+
+  // ─── Logica de cura ──────────────────────────────────────
+
+  public function curar(): void
+  {
+    [$jogador, $pocoesDisponiveis] = $this->resolverJogadorEPocoesDoTurno();
+    $pocoesFiltradas = array_filter($pocoesDisponiveis);
+
+    if (empty($pocoesFiltradas)) {
+      echo "Nenhuma poção disponível.\n";
+      return;
+    }
+
+    $this->exibirPocoesDisponiveis($pocoesFiltradas);
+
+    $mensagem = "Digite o nível da poção: ";
+    // $textoErro = "[curar]ERRO: POÇÃO NÃO DISPONIVEL.";
+
+    // $nivelEscolhido = (int) $this->tentativaEErro(
+    //   readline(...), 
+    //   $mensagem, 
+    //   $textoErro,
+    //   true); 
+
+    $nivelEscolhido = (int)readline($mensagem);
+    if (!in_array($nivelEscolhido, $pocoesFiltradas))
+      throw new \Exception("[Arbitro] Poção inválida ou indisponível: $nivelEscolhido");
+
+    $indice = $nivelEscolhido ;
+    $jogador->usarPocao($indice, self::VOLORES_DE_CURA);
+
+    $this   ->consumirPocao($indice);
+  }
+
+  private function exibirPocoesDisponiveis(array $pocoesFiltradas): void // PESQUISAR O POR QUE FUNCIONOU QUANDO REMOVEU O PARAMETRO NÃO USADO
+  {
+    echo "\nPOÇÕES DISPONÍVEIS\n";
+    foreach ($pocoesFiltradas as $nivel){
+
+      $valorDaCura = self::VOLORES_DE_CURA[$nivel-1];
+      echo "$nivel: Poção nível $nivel [VALOR DE CURA: $valorDaCura]\n";
+
+    }
+  }
   private function consumirPocao(int $indice): void
   {
     if ($this->jogadorDaVez === 1) 
@@ -294,4 +291,14 @@ class Arbitro
     else
       $this->pocoesDisponiveisJogador2[$indice] = 0;
   }
+
+    private function reporPocao(int $indice, int $nivel): void
+    {
+      if ($this->pocoesDisponiveisJogador1[$indice] === 0)
+        $this->pocoesDisponiveisJogador1[$indice] = $nivel;
+
+      if ($this->pocoesDisponiveisJogador2[$indice] === 0)
+        $this->pocoesDisponiveisJogador2[$indice] = $nivel;
+    }
 }
+

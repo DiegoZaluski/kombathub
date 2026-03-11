@@ -6,6 +6,7 @@ class Combatentes
   use Acao;
 
   const PERSONAGENS = ["mago", "cavaleiro", "bruxa"];
+  const VALORES_DE_CURAS = [10, 30, 50];
 
   const ATAQUES_BASICOS = [
     "soco"      => 5,

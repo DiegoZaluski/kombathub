@@ -19,15 +19,15 @@ class SeletorDeCombatentes
 
     echo "\n[JOGADOR 1]\n";
     $this->nomeCombatente1 = $this->tentativaEErro(
-      func: $this->selecionarPersonagem(...),
-      menssagemParaArgumento: $mensagemCombatente1,
-      textoErro: $textoErro);
+      $this->selecionarPersonagem(...),
+      $mensagemCombatente1,
+      $textoErro);
 
     echo "\n[JOGADOR 2]\n";
     $this->nomeCombatente2 = $this->tentativaEErro(
-      func: $this->selecionarPersonagem(...),
-      menssagemParaArgumento: $mensagemCombatente2,
-      textoErro: $textoErro);
+      $this->selecionarPersonagem(...),
+      $mensagemCombatente2,
+      $textoErro);
 
     return [
       $this->instanciarCombatente($this->nomeCombatente1),

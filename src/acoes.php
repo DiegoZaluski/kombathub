@@ -1,11 +1,11 @@
 <?php
+
 /**
  * @property int $vida
  */
 trait Acao 
 {
-  public function usarPocao(int $nivel): void {
-    $curasPorNivel = [10, 30, 50];
+  public function usarPocao(int $nivel, array $curasPorNivel): void {
     $nivelValido   = $nivel >= 0 && $nivel < count($curasPorNivel);
     $cura          = $nivelValido ? $curasPorNivel[$nivel] : 0;
 

@@ -3,13 +3,31 @@ trait TentativaEErro {
   // __ Utilitario ____________________________________________
   private function tentativaEErro(
     callable $func , 
-    string $menssagemParaArgumento, 
-    string $textoErro): string|bool|int
+    string|null $argumento = null, 
+    string $textoErro, 
+    string|bool $numerico = false
 
+    ): string|bool|int
+    
   {
     while (true) {
       try {
-        $valorDaFuncao = $func($menssagemParaArgumento);
+        
+        if (!$argumento) {
+          $valorDaFuncao = $func();
+          return $valorDaFuncao;
+        } 
+
+        $valorDaFuncao = $func($argumento);
+
+        if ($numerico && $argumento && is_numeric($valorDaFuncao) ) {
+          return $valorDaFuncao;
+
+        } elseif ($numerico) {
+          echo "\n$textoErro\n";
+          continue;
+        } 
+
         return $valorDaFuncao;
       } 
       catch (Exception $e ) {
@@ -17,5 +35,4 @@ trait TentativaEErro {
       }
     } 
   }
-//_____________________________________________________________
 }
