@@ -3,11 +3,11 @@ trait TentativaEErro {
   // __ Utilitario ____________________________________________
   private function tentativaEErro(
     callable $func , 
-    string|null $argumento = null, 
+    string|null $argumento, 
     string $textoErro, 
     string|bool $numerico = false
 
-    ): string|bool|int
+    ): string|bool|int|null
     
   {
     while (true) {

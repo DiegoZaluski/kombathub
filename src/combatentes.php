@@ -4,7 +4,6 @@ require_once "./src/acoes.php";
 class Combatentes 
 {
   use Acao;
-
   const PERSONAGENS = ["mago", "cavaleiro", "bruxa"];
   const VALORES_DE_CURAS = [10, 30, 50];
 
@@ -14,7 +13,9 @@ class Combatentes
     "distancia" => 15,
   ];
 
-  protected int   $vida           = 200;
+  protected int $vida            = 200;
+  protected int $barraDeEspecial = 0;
+  
   protected array $ataquesBasicos = [];
 
   public function __construct() 
@@ -24,10 +25,15 @@ class Combatentes
 
   public function __get(string $propriedade): mixed {
     return match ($propriedade) {
-      'vida'           => $this->vida,
-      'ataquesBasicos' => $this->ataquesBasicos,
+      "vida"           => $this->vida,
+      "ataquesBasicos" => $this->ataquesBasicos,
+      "barraDeEspecial"=> $this->barraDeEspecial,
       default          => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
     };
+  }
+  private function especialAteCinco($especial): void {
+    if ($especial > 5) return;
+    $this->barraDeEspecial = $especial;
   }
 
   public function __set(string $propriedade, int $valor): void 
@@ -36,8 +42,9 @@ class Combatentes
       throw new InvalidArgumentException("Valor deve ser numerico.");
 
     match ($propriedade) {
-      "vida"  => $this->vida = $valor,
-      default => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
+      "vida"            => $this->vida = $valor,
+      "barraDeEspecial" => $this->especialAteCinco($valor),
+      default           => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
     };
   }
 
