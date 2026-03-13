@@ -14,8 +14,7 @@ trait TentativaEErro {
       try {
         $valor = $argumento ? $func($argumento) : $func();
       } catch (Exception $_) {
-        echo "teste";
-        echo "\n$textoErro\n";
+        echo "$textoErro\n";
         continue;
       }
       if (!$numerico) return $valor;

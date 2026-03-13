@@ -7,7 +7,7 @@ class SeletorDeCombatentes
 
   public string $nomeCombatente1;
   public string $nomeCombatente2;
-
+  
   public function escolherCombatentes(): array
   {
     echo "Escolha os combatentes:\n";
