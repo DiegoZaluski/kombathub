@@ -1,68 +1,107 @@
 <?php
-require_once("./src/util/tentativaEErro.php");
+require_once("./essencial/util/tentativaEErro.php");
+require_once("./essencial/util/painel.php");
 class Arbitro
 // reporPocao
 {
-
+  use Painel;
   use TentativaEErro;
-  const VOLORES_DE_CURA = [10, 30, 50];
-  const POCAO_NIVEL_1 = 1;
-  const POCAO_NIVEL_2 = 2;
-  const POCAO_NIVEL_3 = 3;
 
-  const RODADA_LIBERA_ESPECIAL_1  = 3;
-  const RODADA_LIBERA_ESPECIAL_2  = 4;
-  const RODADA_LIBERA_POCAO_1     = 2;
-  const RODADA_LIBERA_POCAO_2     = 4;
-  const RODADA_LIBERA_POCAO_3     = 6;
-  const MAX_RODADAS_ESPECIAL      = 4;
-  const MAX_RODADAS_POCAO         = 7;
+  const POCAO_NIVEL_1                = 1;
+  const POCAO_NIVEL_2                = 2;
+  const POCAO_NIVEL_3                = 3;
+  const INDICE1_APOS_ATAQUES_SIMPLES = 4;
+  const INDICE2_APOS_ATAQUES_SIMPLES = 5;
+  const INDICE3_APOS_ATAQUES_SIMPLES = 6;
+  const MAX_RODADAS_POCAO            = 7;
+  const MAX_RODADAS_ESPECIAL         = 10;
+  const RODADA_LIBERA_ESPECIAL_1     = 3;
+  const RODADA_LIBERA_ESPECIAL_2     = 6;
+  const RODADA_LIBERA_POCAO_1        = 2;
+  const RODADA_LIBERA_POCAO_2        = 4;
+  const RODADA_LIBERA_POCAO_3        = 6;
+
+  const VOLORES_DE_CURA = [10, 30, 50];
+
+  const ESPECIAS_POSSIVEIS_INDICES = 
+  [ 
+    self::INDICE1_APOS_ATAQUES_SIMPLES,
+    self::INDICE2_APOS_ATAQUES_SIMPLES,
+    self::INDICE3_APOS_ATAQUES_SIMPLES
+  ];
 
   public $jogador1;
   public $jogador2;
   public string|null $nomeCombatente1 = null;
   public string|null $nomeCombatente2 = null;
 
-  public int $jogadorDaVez = 1;
+  public  int $jogadorDaVez    = 1;
   private int $contadorRodadas = 0; 
 
-  public array $especiaisDisponiveisJogador1 = [false, false, false];
-  public array $especiaisDisponiveisJogador2 = [false, false, false];
-  public $golpesSimplesDisponiveis           = ["chute"=> true, "distancia"=> true];
-  public array $pocoesDisponiveisJogador1    = [self::POCAO_NIVEL_1, self::POCAO_NIVEL_2, self::POCAO_NIVEL_3];
-  public array $pocoesDisponiveisJogador2    = [self::POCAO_NIVEL_1, self::POCAO_NIVEL_2, self::POCAO_NIVEL_3];
+  public  array $especiaisDisponiveisJogador1 = [false, false, false];
+  public  array $especiaisDisponiveisJogador2 = [false, false, false];
+  public  array $golpesSimplesDisponiveis     = ["chute"=> true, "distancia"=> true];
+  public  array $pocoesDisponiveisJogador1    = [self::POCAO_NIVEL_1, self::POCAO_NIVEL_2, self::POCAO_NIVEL_3];
+  public  array $pocoesDisponiveisJogador2    = [self::POCAO_NIVEL_1, self::POCAO_NIVEL_2, self::POCAO_NIVEL_3];
+  private array $pocaosJaUsadasJogador1       = [ ];
+  private array $pocaosJaUsadasJogador2       = [ ];
 
   private bool $especialUnicoJogador1Disponivel = true;
   private bool $especialUnicoJogador2Disponivel = true;
 
+  public \closure $disponivelSuperEspecial;
+  public \closure $emojiMorto;
+
   public function __construct($jogador1, $jogador2, string $nomeCombatente1, string $nomeCombatente2)
   {
-    $this->jogador1 = $jogador1;
-    $this->jogador2 = $jogador2;
+    $this->jogador1        = $jogador1;
+    $this->jogador2        = $jogador2;
     $this->nomeCombatente1 = $nomeCombatente1;
     $this->nomeCombatente2 = $nomeCombatente2;
-  }
 
+    $this->emojiMorto = fn ($vida) => $vida <= 0 ? "💀" : $vida;
+  }
+  public function disponivelSuperEspecial(): mixed {
+    // barraDeEspecial
+    $arrayDeRetorno = [ ];
+    if ($this->jogador1->barraDeEspecial != 10) {
+      $arrayDeRetorno[ ] = $this->jogador1->barraDeEspecial;
+    } elseif ($this->jogador1->barraDeEspecial === 10 && $this->especiaisDisponiveisJogador1[2] && $this->jogador1->vida <= 100){
+      $arrayDeRetorno[ ] = "[DISPONIVEL]";
+    } elseif ($this->jogador1->barraDeEspecial === 10 && !$this->especiaisDisponiveisJogador1[2] && $this->jogador1->vida > 100) {
+      $arrayDeRetorno[ ] = "[ESPERANDO O DESESPERO🗡️💥]";
+    } else {
+      $arrayDeRetorno[ ] = "[INDISPONIVEL]";
+    }
+
+    if ($this->jogador2->barraDeEspecial != 10) {
+      $arrayDeRetorno[ ] = $this->jogador2->barraDeEspecial;
+    } elseif ($this->jogador2->barraDeEspecial === 10 && $this->especiaisDisponiveisJogador2[2] && $this->jogador2->vida <= 100){
+      $arrayDeRetorno[ ] = "[DISPONIVEL]";
+    } elseif ($this->jogador2->barraDeEspecial === 10 && !$this->especiaisDisponiveisJogador2[2] && $this->jogador2->vida > 100) {
+      $arrayDeRetorno[ ] = "[ESPERANDO O DESESPERO🗡️💥]";
+    } else {
+      $arrayDeRetorno[ ] = "[INDISPONIVEL]";
+    }
+
+    return $arrayDeRetorno;
+  }
   // ─── Controle de turno ───────────────────────────────────────────────────
 
   public function avancarTurno(): void
   {
+    $this->morteSubta();
     $this->jogadorDaVez = $this->jogadorDaVez === 1 ? 2 : 1;
     $this->contadorRodadas++;
     $this->liberarEspeciaisPorRodada();
-    // $this->liberarPocoes();
   }
-
   public function exibirEstadoDaBatalha(): void
   {
-    echo "\033[s";
-    echo "\033[H";
-    echo "\033[2K" . "───────────────────────────────────────────────────\n";
-    echo "\033[2K" . "Rodada {$this->contadorRodadas} | Vez do Jogador {$this->jogadorDaVez}\n";
-    echo "\033[2K" . "Jogador 1 [{$this->nomeCombatente1}] HP: {$this->jogador1->vida}\n";
-    echo "\033[2K" . "Jogador 2 [{$this->nomeCombatente2}] HP: {$this->jogador2->vida}\n";
-    echo "\033[2K" . "───────────────────────────────────────────────────\n";
-    echo "\033[u";
+
+    $vivoOuMorto1   = ($this->emojiMorto)($this->jogador1->vida);;
+    $vivoOuMorto2   = ($this->emojiMorto)($this->jogador2->vida);
+
+    $this->painel([$vivoOuMorto1, $vivoOuMorto2 ], $this->disponivelSuperEspecial()); // AQUI 
   }
 
   public function batalhaEncerrada(): bool
@@ -95,10 +134,10 @@ class Arbitro
     $acao = (int)$this->tentativaEErro(
       readline(...),
       $mensagem,
-      $textErro);
-    // $acao = (int)readline($mensagem );
+      $textErro, 
+      true,
+      3);
       
-    // echo "AÇÃO LOG: $acao". is_numeric($acao);
     match ($acao) {
       1       => $this->atacar(),
       2       => $this->curar(),
@@ -112,30 +151,41 @@ class Arbitro
 
   public function atacar(): void
   {
-    [$atacante, $defensor] = $this->resolverAtacanteEDefensor();
-    [$especiaisDisponiveis, $nomesEspeciais] = $this->resolverEspeciaisDoAtacante();
-
-    $this->exibirOpcoesDeAtaque($atacante, $especiaisDisponiveis, $nomesEspeciais);
-
-    // $escolha = (int) readline("Escolha um ataque: ") -1;
+    [$atacante, $defensor]                         = $this->resolverAtacanteEDefensor();
+    [$especiaisDisponiveis, $nomesEspeciais]       = $this->resolverEspeciaisDoAtacante();
+    [$naoPermitidosEspecias, $permitidosEspeciais] = $this->exibirOpcoesDeAtaque($atacante, $especiaisDisponiveis, $nomesEspeciais); // primeiro ponto 
+    
     $mensagem = "Escolha um ataque: ";
-    $textpErro = "ERRO: OPÇÃO DE ATAQUE INVALIDO." ;
+    $textErro = "ERRO: OPÇÃO DE ATAQUE INVALIDO." ;
+
+    // $comprimentoNaoPermitidos = count($PermitidosEspecias);
+    if ($permitidosEspeciais && count($permitidosEspeciais) > 1) {
+      $numeroSuperior = max(...$permitidosEspeciais);
+      $numeroDeGolpes = $numeroSuperior;
+    } elseif($permitidosEspeciais && count($permitidosEspeciais) === 1) {
+      $numeroDeGolpes = $permitidosEspeciais[0];
+    } else {
+      $numeroDeGolpes = 3;
+    }
 
     $escolha = (int)$this->tentativaEErro(
       readline(...),
       $mensagem,
-      $textpErro) -1;
+      $textErro,
+      true,
+      $numeroDeGolpes, 
+      $naoPermitidosEspecias) -1;
     
     $ataquesBasicos = array_keys($atacante->ataquesBasicos);
     $totalBasicos   = count($ataquesBasicos);
 
-    if ($escolha >=0 && $escolha < $totalBasicos) { // aqui 
+    if ($escolha >=0 && $escolha < $totalBasicos) { 
       if ($escolha === 1 || $escolha === 2) $atacante->barraDeEspecial++;
 
       $nomeAtaque = $ataquesBasicos[$escolha];
       $argumentos = $atacante->ataquesTotal[$nomeAtaque];
       $textoErro  = "[atacar] ERRO: VALOR INVALIDO";
-      $this->tentativaEErro($defensor->causarDano(...), $argumentos, $textoErro); // AQUI
+      $defensor->causarDano($argumentos, $textoErro);
       return;
     }
 
@@ -149,11 +199,11 @@ class Arbitro
     $this->consumirEspecial($indiceEspecial);
   }
 
-  private function exibirOpcoesDeAtaque($atacante, array $especiaisDisponiveis, array $nomesEspeciais): void
+  private function exibirOpcoesDeAtaque($atacante, array $especiaisDisponiveis, array $nomesEspeciais): mixed
   {
+    $numeroDosAtaquesDispoveis = [ ];
     echo "\nATAQUES BÁSICOS\n";
     foreach (array_keys($atacante->ataquesBasicos) as $i => $nome){
-      // $this->golpesSimplesDisponiveis[$nome];
 
       $danoDoGolpe = $atacante->ataquesBasicos[$nome];
       $i++;
@@ -164,10 +214,20 @@ class Arbitro
     foreach ($nomesEspeciais as $i => $nome) {
       if (!$especiaisDisponiveis[$i]) continue;
 
-      $danoDoGolpe = $atacante->ataquesTotal[$nome];
-      $exibicao    = $i + $totalBasicos + 1;
+      $danoDoGolpe                  = $atacante->ataquesTotal[$nome];
+      $exibicao                     = $i + $totalBasicos + 1;
+      $numeroDosAtaquesDispoveis[ ] = $exibicao;
+
       echo "$exibicao: [ESPECIAL] $nome [DANO: $danoDoGolpe]\n";
     }
+
+    if (!$numeroDosAtaquesDispoveis) return [null, null];
+
+    $arrayAtaquesIndiponiveis = array_diff(self::ESPECIAS_POSSIVEIS_INDICES,$numeroDosAtaquesDispoveis);
+    $arrayAtaquesDisponiveis  = array_intersect(self::ESPECIAS_POSSIVEIS_INDICES,$numeroDosAtaquesDispoveis);
+
+    // var_dump($arrayAtaquesIndiponiveis);
+    return [$arrayAtaquesIndiponiveis, $arrayAtaquesDisponiveis];
   }
 
   public function defender(): void // REVER ESSA LOGICA 
@@ -199,27 +259,33 @@ class Arbitro
 
   private function liberarEspecialUnico(): void 
   {
-    
     [$jogador, $_] = $this->resolverAtacanteEDefensor();
-    echo $jogador->barraDeEspecial;
-
-    if ($this->especialUnicoJogador1Disponivel && $this->jogador1->vida <= 100) { // POSSIBILIDADE DE UNIFICAR LOGICA REPETIDA 
-      if ($jogador->barraDeEspecial != 5) return;
-      $this->especiaisDisponiveisJogador1[2]      = true;
-      $this->especialUnicoJogador1Disponivel      = false;
-      $jogador->barraDeEspecia = 0;
-    }
-
-    if ($this->especialUnicoJogador2Disponivel && $this->jogador2->vida <= 100) {
-      if ($jogador->barraDeEspecial != 5) return;
-      $this->especiaisDisponiveisJogador2[2]      = true;
-      $this->especialUnicoJogador2Disponivel      = false;
-      $jogador->barraDeEspecial = 0;
-    }
+    match($this->jogadorDaVez) {
+      1 => $this->podeUsarEspecialUnico($this->especialUnicoJogador1Disponivel, $jogador),
+      2 => $this->podeUsarEspecialUnico($this->especialUnicoJogador2Disponivel, $jogador),
+    };
   }
 
+  private function podeUsarEspecialUnico($especialDisponivel, $jogador): void {
+    if (!$especialDisponivel || $jogador->vida > 100) return;
+    if ($jogador->barraDeEspecial != 10) return;
+    switch($this->jogadorDaVez) {
+      case (1): {
+        if ($this->especiaisDisponiveisJogador1[2] === true) return;
+        $this->especiaisDisponiveisJogador1[2] = true;
+        $this->especialUnicoJogador1Disponivel = false; 
+        break;
+      }
+      case (2): {
+        if ($this->especiaisDisponiveisJogador2[2] === true) return;
+        $this->especiaisDisponiveisJogador2[2] = true;
+        $this->especialUnicoJogador2Disponivel = false; 
+        break;
+      }
+      default: { throw new \Exception("[podeUsarEspecialUnico] Não deveria cair nesse case"); }
+    }
+  }
   // ─── Helpers de resolução por turno ──────────────────────────────────────
-
   private function resolverAtacanteEDefensor(): array
   {
     return $this->jogadorDaVez === 1
@@ -265,20 +331,22 @@ class Arbitro
 
     $mensagem = "Digite o nível da poção: ";
     $textoErro = "[curar]ERRO: POÇÃO NÃO DISPONIVEL.";
-
+    
     $nivelEscolhido = (int) $this->tentativaEErro(
       readline(...), 
       $mensagem, 
       $textoErro,
-      true); 
+      true,3
+      ,$this->addOuPegarpocaosJaUsada());  
 
+    $this->addOuPegarpocaosJaUsada($nivelEscolhido);
     if (!in_array($nivelEscolhido, $pocoesFiltradas))
       throw new \Exception("[Arbitro] Poção inválida ou indisponível: $nivelEscolhido");
 
     $indice = $nivelEscolhido -1;
     $jogador->usarPocao($indice, self::VOLORES_DE_CURA);
 
-    $this   ->consumirPocao($indice);
+    $this->consumirPocao($indice);
   }
 
   private function exibirPocoesDisponiveis(array $pocoesFiltradas): void 
@@ -299,12 +367,34 @@ class Arbitro
       $this->pocoesDisponiveisJogador2[$indice] = 0;
   }
 
-    // private function reporPocao(int $indice, int $nivel): void
-    // {
-    //   if ($this->pocoesDisponiveisJogador1[$indice] === 0)
-    //     $this->pocoesDisponiveisJogador1[$indice] = $nivel;
+  public function addOuPegarpocaosJaUsada($add = null) {
+  /**
+   * @param int|null $add: para setar um valor no respectiva propriedade 
+   *  do jogador atual da rodada (pocaosJaUsadasJogador1 | pocaosJaUsadasJogador2)
+   * @return array
+   */
+    if ($this->jogadorDaVez === 1) {
+      if (!$add) return $this->pocaosJaUsadasJogador1;
+      $this->pocaosJaUsadasJogador1[ ] = $add;
+    } else {
+      if (!$add) return $this->pocaosJaUsadasJogador2;
+      $this->pocaosJaUsadasJogador2[ ] = $add;
+    }
+  }
 
-    //   if ($this->pocoesDisponiveisJogador2[$indice] === 0)
-    //     $this->pocoesDisponiveisJogador2[$indice] = $nivel;
-    // }
+  // ─── Limite passe de cura ──────────────────────────────────────
+  private function morteSubta():void {
+    $vidaJogador1 = $this->jogador1->vida;  
+    $vidaJogador2 = $this->jogador2->vida;
+    $mesagem = "A ganância leva o homem à destruição.\n";
+    if ($vidaJogador1 >= 300 && $vidaJogador2 >= 300) {
+      echo "[AMBOS SE ENVENENRAM COM EXESSO DE POÇÃO]\n" . $mesagem; 
+    } elseif($vidaJogador1 >= 300) {
+      echo $mesagem;
+      $this->jogador1->vida = 0;
+    } elseif($vidaJogador2 >= 300) {
+      echo $mesagem;
+      $this->jogador2->vida = 0;
+    }
+  }
 }

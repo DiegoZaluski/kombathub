@@ -1,5 +1,5 @@
 <?php
-require_once "./src/acoes.php";
+require_once "./essencial/acoes.php";
 
 class Combatentes 
 {
@@ -13,8 +13,8 @@ class Combatentes
     "distancia" => 15,
   ];
 
-  protected int $vida            = 200;
-  protected int $barraDeEspecial = 0;
+  protected int   $vida            = 200;
+  protected int   $barraDeEspecial = 1;
   
   protected array $ataquesBasicos = [];
 
@@ -31,9 +31,13 @@ class Combatentes
       default          => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
     };
   }
-  private function especialAteCinco($especial): void {
-    if ($especial > 5) return;
-    $this->barraDeEspecial = $especial;
+  private function especialAte10($especial): void {
+    if ($especial === 0) echo "[AVISO] O especial para logica funcionar nunca deveria chegar a zero." ; 
+    if (is_numeric($especial) && $especial >= 10){
+      $this->barraDeEspecial = 10;
+      return;
+    }
+    if (is_numeric($especial)) $this->barraDeEspecial = $especial;
   }
 
   public function __set(string $propriedade, int $valor): void 
@@ -43,7 +47,7 @@ class Combatentes
 
     match ($propriedade) {
       "vida"            => $this->vida = $valor,
-      "barraDeEspecial" => $this->especialAteCinco($valor),
+      "barraDeEspecial" => $this->especialAte10($valor),
       default           => throw new InvalidArgumentException("Propriedade '$propriedade' nao existe."),
     };
   }

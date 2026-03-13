@@ -1,5 +1,5 @@
 <?php
-require_once("./src/util/tentativaEErro.php");
+require_once("./essencial/util/tentativaEErro.php");
 class SeletorDeCombatentes
 {
   use TentativaEErro;
